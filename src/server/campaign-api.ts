@@ -110,55 +110,40 @@ async function saveDataUrlAsset(prefix: string, input: AssetUploadPayload): Prom
   };
 }
 
-async function assetToDataUrl(asset: AssetReference | null) {
+function assetToUrl(asset: AssetReference | null) {
   if (!asset) {
     return null;
   }
 
-  const object = await env.CAMPAIGN_ASSETS.get(asset.key);
-  if (!object) {
-    return null;
-  }
-
-  const bytes = new Uint8Array(await object.arrayBuffer());
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-
-  return `data:${asset.contentType};base64,${btoa(binary)}`;
+  return `/api/assets?key=${encodeURIComponent(asset.key)}`;
 }
 
 async function resolveAssets(snapshot: CampaignSnapshot): Promise<CampaignAssets> {
-  const libraryEntries = await Promise.all(
-    Object.entries(snapshot.state.map.markerLibrary).map(async ([key, asset]) => {
+  const libraryEntries = Object.entries(snapshot.state.map.markerLibrary).map(([key, asset]) => {
       if (!asset) {
         return null;
       }
 
-      return [key, await assetToDataUrl(asset)] as const;
-    }),
-  );
+      return [key, assetToUrl(asset)] as const;
+    });
 
   return {
-    regionMapDataUrl: await assetToDataUrl(snapshot.state.map.regionMap),
+    regionMapDataUrl: assetToUrl(snapshot.state.map.regionMap),
     markerLibraryDataUrls: Object.fromEntries(
       libraryEntries.filter((entry): entry is readonly [string, string | null] => entry !== null),
     ) as CampaignAssets["markerLibraryDataUrls"],
     entityAssetDataUrls: Object.fromEntries(
-      (
-        await Promise.all([
-          ...snapshot.state.characters
-            .filter((character) => character.portrait)
-            .map(async (character) => [character.id, await assetToDataUrl(character.portrait)] as const),
-          ...snapshot.state.map.hiddenSites
-            .filter((site) => site.image)
-            .map(async (site) => [site.id, await assetToDataUrl(site.image)] as const),
-          ...snapshot.state.map.markers
-            .filter((marker) => marker.image)
-            .map(async (marker) => [marker.id, await assetToDataUrl(marker.image)] as const),
-        ])
-      ).filter((entry): entry is readonly [string, string | null] => Boolean(entry[1])),
+      [
+        ...snapshot.state.characters
+          .filter((character) => character.portrait)
+          .map((character) => [character.id, assetToUrl(character.portrait)] as const),
+        ...snapshot.state.map.hiddenSites
+          .filter((site) => site.image)
+          .map((site) => [site.id, assetToUrl(site.image)] as const),
+        ...snapshot.state.map.markers
+          .filter((marker) => marker.image)
+          .map((marker) => [marker.id, assetToUrl(marker.image)] as const),
+      ].filter((entry): entry is readonly [string, string | null] => Boolean(entry[1])),
     ) as Record<string, string>,
   };
 }

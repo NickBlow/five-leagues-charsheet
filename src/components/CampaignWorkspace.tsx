@@ -1479,67 +1479,69 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                   </svg>
 
                   {state.map.markers.map((marker) => {
-                    const preview = getMarkerPreview(marker, assets);
+                    const preview = getEntityAssetDataUrl(marker.id, getMarkerPreview(marker, assets));
                     return (
                       <div
                         key={marker.id}
-                        className="absolute z-20 -translate-x-1/2 -translate-y-full"
+                        className="absolute z-20 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
                         style={{ left: `${marker.x * 100}%`, top: `${marker.y * 100}%` }}
                       >
-                        <button
-                          type="button"
-                          aria-label={marker.title}
-                          draggable={false}
-                          className={`rounded-full p-1 transition ${selectedMarkerId === marker.id ? "scale-110" : "hover:scale-105"}`}
-                          onPointerDown={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            const point = getRelativePoint(mapViewportRef.current, event.clientX, event.clientY);
-                            if (point) {
-                              setDragPointerOffset({ x: marker.x - point.x, y: marker.y - point.y });
-                            }
-                            setDraggingTarget(marker.id);
-                            setSelectedMarkerId(marker.id);
-                            setSelectedSubregionId(null);
-                            setSelectedHiddenSiteId(null);
-                            setIsPartyPositionSelected(false);
-                          }}
-                          onDragStart={(event) => event.preventDefault()}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedMarkerId(marker.id);
-                            setSelectedSubregionId(null);
-                            setSelectedHiddenSiteId(null);
-                            setIsPartyPositionSelected(false);
-                          }}
-                        >
-                          {preview ? (
-                            <img src={preview} alt="" draggable={false} className="pointer-events-none h-[clamp(22px,2.4vw,42px)] w-[clamp(22px,2.4vw,42px)] drop-shadow-[0_8px_12px_rgba(0,0,0,0.32)] select-none" />
-                          ) : (
-                            <div className="grid h-10 w-10 place-items-center rounded-full border border-[var(--border-strong)] bg-[var(--panel)] text-xs font-semibold text-[var(--ink)] shadow-[0_8px_16px_rgba(42,27,14,0.16)]">
-                              {marker.kind === "town" ? "T" : marker.title[0]}
-                            </div>
-                          )}
-                        </button>
+                        <div className="relative flex items-center justify-center">
+                          <button
+                            type="button"
+                            aria-label={marker.title}
+                            draggable={false}
+                            className={`rounded-full p-1 transition ${selectedMarkerId === marker.id ? "scale-110" : "hover:scale-105"}`}
+                            onPointerDown={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              const point = getRelativePoint(mapViewportRef.current, event.clientX, event.clientY);
+                              if (point) {
+                                setDragPointerOffset({ x: marker.x - point.x, y: marker.y - point.y });
+                              }
+                              setDraggingTarget(marker.id);
+                              setSelectedMarkerId(marker.id);
+                              setSelectedSubregionId(null);
+                              setSelectedHiddenSiteId(null);
+                              setIsPartyPositionSelected(false);
+                            }}
+                            onDragStart={(event) => event.preventDefault()}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedMarkerId(marker.id);
+                              setSelectedSubregionId(null);
+                              setSelectedHiddenSiteId(null);
+                              setIsPartyPositionSelected(false);
+                            }}
+                          >
+                            {preview ? (
+                              <img src={preview} alt="" draggable={false} className="pointer-events-none h-[clamp(22px,2.4vw,42px)] w-[clamp(22px,2.4vw,42px)] drop-shadow-[0_8px_12px_rgba(0,0,0,0.32)] select-none" />
+                            ) : (
+                              <div className="grid h-10 w-10 place-items-center rounded-full border border-[var(--border-strong)] bg-[var(--panel)] text-xs font-semibold text-[var(--ink)] shadow-[0_8px_16px_rgba(42,27,14,0.16)]">
+                                {marker.kind === "town" ? "T" : marker.title[0]}
+                              </div>
+                            )}
+                          </button>
+                          {selectedMarkerId === marker.id ? (
+                            <button
+                              type="button"
+                              aria-label={`Remove ${marker.title}`}
+                              className="absolute -right-2 -top-2 z-10 grid h-6 w-6 place-items-center rounded-full border border-[var(--border-strong)] bg-white text-xs text-[var(--ink)] shadow"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                deleteMarker(marker.id);
+                              }}
+                            >
+                              x
+                            </button>
+                          ) : null}
+                        </div>
                         <div
-                          className="pointer-events-none mt-1 text-center text-[clamp(10px,1.15vw,15px)] font-semibold text-black"
+                          className="pointer-events-none mt-1 whitespace-nowrap text-center text-[clamp(10px,1.15vw,15px)] font-semibold text-black"
                           style={{ textShadow: "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px rgba(255,255,255,0.88)" }}
                         >
                           {marker.title}
                         </div>
-                        {selectedMarkerId === marker.id ? (
-                          <button
-                            type="button"
-                            aria-label={`Remove ${marker.title}`}
-                            className="absolute -right-3 -top-2 grid h-6 w-6 place-items-center rounded-full border border-[var(--border-strong)] bg-white text-xs text-[var(--ink)] shadow"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              deleteMarker(marker.id);
-                            }}
-                          >
-                            x
-                          </button>
-                        ) : null}
                       </div>
                     );
                   })}
@@ -1549,7 +1551,7 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                       type="button"
                       aria-label="Current party position"
                       draggable={false}
-                      className={`absolute z-20 -translate-x-1/2 -translate-y-full rounded-full p-1 transition ${
+                      className={`absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-full p-1 transition ${
                         isPartyPositionSelected ? "scale-110" : "hover:scale-105"
                       }`}
                       style={{ left: `${state.map.partyPosition.x * 100}%`, top: `${state.map.partyPosition.y * 100}%` }}

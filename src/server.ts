@@ -4,8 +4,26 @@ export { CampaignStore } from "./server/campaign-store";
 const CAMPAIGN_COOKIE_NAME = "five_leagues_campaign";
 
 export default {
-  async fetch(request: Request) {
+  async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
+
+    if (url.pathname === "/api/assets") {
+      const key = url.searchParams.get("key")?.trim();
+      if (!key) {
+        return new Response("Missing asset key", { status: 400 });
+      }
+
+      const object = await env.CAMPAIGN_ASSETS.get(key);
+      if (!object) {
+        return new Response("Not found", { status: 404 });
+      }
+
+      const headers = new Headers();
+      object.writeHttpMetadata(headers);
+      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+      headers.set("ETag", object.httpEtag);
+      return new Response(object.body, { headers });
+    }
 
     if (url.pathname === "/" && url.searchParams.get("picker") !== "1") {
       const campaignCode = readCampaignCookie(request.headers.get("cookie"));
