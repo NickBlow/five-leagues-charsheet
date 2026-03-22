@@ -1,0 +1,67 @@
+{
+  "party-horse": {
+    "label": "mounted adventuring party position",
+    "file": "/marker-library/party-horse.png",
+    "prompt": "Create a fantasy cartography map marker for a mounted adventuring party position. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. Show a mounted horse or pack horse marker for the current party position, suited to a traveling warband on a parchment map."
+  },
+  "town-fortified-town": {
+    "label": "Fortified town",
+    "file": "/marker-library/town-fortified-town.png",
+    "prompt": "Create a fantasy cartography map marker for a Fortified town. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. "
+  },
+  "town-sanctuary-camp": {
+    "label": "Sanctuary camp",
+    "file": "/marker-library/town-sanctuary-camp.png",
+    "prompt": "Create a fantasy cartography map marker for a Sanctuary camp. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. "
+  },
+  "town-old-rubble": {
+    "label": "Old rubble",
+    "file": "/marker-library/town-old-rubble.png",
+    "prompt": "Create a fantasy cartography map marker for an Old rubble. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. "
+  },
+  "town-scout-camp": {
+    "label": "Scout camp",
+    "file": "/marker-library/town-scout-camp.png",
+    "prompt": "Create a fantasy cartography map marker for a Scout camp. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. Design it as a desert scout camp with dunes, expedition tents, sun-bleached cloth, dry scrub, and a frontier outpost feel. Avoid heraldry, fleur-de-lis symbols, and European court motifs."
+  },
+  "town-trading-post": {
+    "label": "Trading post",
+    "file": "/marker-library/town-trading-post.png",
+    "prompt": "Create a fantasy cartography map marker for a Trading post. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. Depict a desert trading post with market awnings, pack goods, and caravan structures. Keep edges clean and avoid stray background artifacts or detached decorative marks."
+  },
+  "town-ancient-city": {
+    "label": "Ancient city",
+    "file": "/marker-library/town-ancient-city.png",
+    "prompt": "Create a fantasy cartography map marker for an Ancient city. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. "
+  },
+  "town-mystic-site": {
+    "label": "Mystic site",
+    "file": "/marker-library/town-mystic-site.png",
+    "prompt": "Create a fantasy cartography map marker for a Mystic site. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. "
+  },
+  "delve": {
+    "label": "delve",
+    "file": "/marker-library/delve.png",
+    "prompt": "Create a fantasy cartography map marker for a delve. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. "
+  },
+  "enemy-hideout": {
+    "label": "enemy hideout",
+    "file": "/marker-library/enemy-hideout.png",
+    "prompt": "Create a fantasy cartography map marker for an enemy hideout. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. "
+  },
+  "unknown-location": {
+    "label": "unknown location",
+    "file": "/marker-library/unknown-location.png",
+    "prompt": "Create a fantasy cartography map marker for an unknown location. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. Represent it as a hand-inked question mark symbol for an unknown location, with cartographic styling rather than a modern UI icon."
+  },
+  "monster-lair": {
+    "label": "monster lair",
+    "file": "/marker-library/monster-lair.png",
+    "prompt": "Create a fantasy cartography map marker for a monster lair. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. "
+  },
+  "enemy-camp": {
+    "label": "enemy camp",
+    "file": "/marker-library/enemy-camp.png",
+    "prompt": "Create a fantasy cartography map marker for an enemy camp. Top-down or emblematic map-symbol view. Match an antique fantasy map style. Use warm sepia parchment tones, dark ink linework, cross-hatching, and lightly desaturated color. Echo a hand-drawn wilderness atlas with rugged mountains, muted teal water accents, and weathered paper atmosphere. Single icon only, centered, transparent background, no label, no frame, no drop shadow, readable at small sizes. "
+  }
+}
