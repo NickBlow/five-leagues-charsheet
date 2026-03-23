@@ -1,16 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import {
-  Download,
-  ImagePlus,
-  MapPinned,
-  Mountain,
-  PenSquare,
-  Search,
-  Save,
-  Swords,
-  Upload,
-} from "lucide-react";
+import { Download, ImagePlus, MapPinned, PenSquare, Search, Save, Swords, Upload } from "lucide-react";
 import {
   MAX_CHARACTERS,
   clampUnit,
@@ -28,7 +18,6 @@ import {
   type HiddenSite,
   type MapLocationKind,
   type MapMarker,
-  type Subregion,
   type TownVariant,
 } from "../lib/campaign";
 import {
@@ -43,13 +32,6 @@ type SaveResult = {
   assets: CampaignAssets;
 };
 
-type DraftSubregion = {
-  title: string;
-  notes: string;
-  color: string;
-  points: Array<{ x: number; y: number }>;
-};
-
 type WorkspaceProps = {
   campaignCode: string;
   initialSnapshot: CampaignSnapshot;
@@ -60,8 +42,6 @@ type WorkspaceTab = "roster" | "campaign" | "map";
 type MarkerLibraryItemKey = MapLocationKind | TownVariant | "party-position";
 
 const RECENT_CAMPAIGNS_KEY = "five-leagues-recent-campaigns";
-
-const subregionPalette = ["#b15835", "#4b6f52", "#2f5c7a", "#7e6651"] as const;
 
 function createMarkerFromLibraryKey(key: MarkerLibraryItemKey, point: { x: number; y: number }): MapMarker {
   if (key === "party-position") {
@@ -78,15 +58,6 @@ function createMarkerFromLibraryKey(key: MarkerLibraryItemKey, point: { x: numbe
     x: point.x,
     y: point.y,
     notes: "",
-  };
-}
-
-function createDraftSubregion(): DraftSubregion {
-  return {
-    title: "",
-    notes: "",
-    color: subregionPalette[Math.floor(Math.random() * subregionPalette.length)],
-    points: [],
   };
 }
 
@@ -141,19 +112,13 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
   const [mapAspectRatio, setMapAspectRatio] = useState(4 / 3);
   const [mapZoom, setMapZoom] = useState(1);
   const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
-  const [showSubregions, setShowSubregions] = useState(true);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("roster");
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
-  const [selectedSubregionId, setSelectedSubregionId] = useState<string | null>(null);
   const [selectedHiddenSiteId, setSelectedHiddenSiteId] = useState<string | null>(null);
   const [isPartyPositionSelected, setIsPartyPositionSelected] = useState(false);
   const [placementMode, setPlacementMode] = useState<"party-position" | null>(null);
-  const [draftSubregion, setDraftSubregion] = useState<DraftSubregion | null>(null);
   const [draggingTarget, setDraggingTarget] = useState<string | "party" | null>(null);
   const [dragPointerOffset, setDragPointerOffset] = useState<{ x: number; y: number } | null>(null);
-  const [draggingSubregionId, setDraggingSubregionId] = useState<string | null>(null);
-  const [draggingSubregionPoint, setDraggingSubregionPoint] = useState<{ subregionId: string; pointIndex: number } | null>(null);
-  const [lastSubregionPointerPoint, setLastSubregionPointerPoint] = useState<{ x: number; y: number } | null>(null);
   const [draggingHiddenSiteId, setDraggingHiddenSiteId] = useState<string | null>(null);
   const [draggingLibraryItem, setDraggingLibraryItem] = useState<MarkerLibraryItemKey | null>(null);
   const [isMapDropActive, setIsMapDropActive] = useState(false);
@@ -171,17 +136,19 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
     [selectedMarkerId, state.map.markers],
   );
 
-  const selectedSubregion = useMemo(
-    () => state.map.subregions.find((subregion) => subregion.id === selectedSubregionId) ?? null,
-    [selectedSubregionId, state.map.subregions],
-  );
-
   const selectedHiddenSite = useMemo(
     () => state.map.hiddenSites.find((site) => site.id === selectedHiddenSiteId) ?? null,
     [selectedHiddenSiteId, state.map.hiddenSites],
   );
 
-  const hasMapSelection = Boolean(selectedMarker || selectedSubregion || selectedHiddenSite || isPartyPositionSelected);
+  const hexGridCells = useMemo(
+    () => createHexGrid(state.map.hexGrid.size, mapAspectRatio),
+    [mapAspectRatio, state.map.hexGrid.size],
+  );
+  const hexOuterStrokeWidth = Math.max(1.8, state.map.hexGrid.size * 0.18);
+  const hexInnerStrokeWidth = Math.max(0.95, state.map.hexGrid.size * 0.09);
+
+  const hasMapSelection = Boolean(selectedMarker || selectedHiddenSite || isPartyPositionSelected);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -259,9 +226,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
     const clearDragging = () => {
       setDraggingTarget(null);
       setDragPointerOffset(null);
-      setDraggingSubregionId(null);
-      setDraggingSubregionPoint(null);
-      setLastSubregionPointerPoint(null);
       setIsPanningMap(false);
       setLastPanClientPoint(null);
     };
@@ -278,30 +242,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
 
       const point = getPointFromClient(event.clientX, event.clientY);
       if (!point) {
-        return;
-      }
-
-      if (draggingSubregionPoint) {
-        updateSubregion(draggingSubregionPoint.subregionId, setState, (subregion) => ({
-          ...subregion,
-          points: subregion.points.map((currentPoint, index) =>
-            index === draggingSubregionPoint.pointIndex ? point : currentPoint,
-          ),
-        }));
-        return;
-      }
-
-      if (draggingSubregionId && lastSubregionPointerPoint) {
-        const dx = point.x - lastSubregionPointerPoint.x;
-        const dy = point.y - lastSubregionPointerPoint.y;
-        updateSubregion(draggingSubregionId, setState, (subregion) => ({
-          ...subregion,
-          points: subregion.points.map((currentPoint) => ({
-            x: clampUnit(currentPoint.x + dx),
-            y: clampUnit(currentPoint.y + dy),
-          })),
-        }));
-        setLastSubregionPointerPoint(point);
         return;
       }
 
@@ -340,7 +280,7 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
       window.removeEventListener("pointerup", clearDragging);
       window.removeEventListener("pointercancel", clearDragging);
     };
-  }, [dragPointerOffset, draggingSubregionId, draggingSubregionPoint, draggingTarget, isPanningMap, lastPanClientPoint, lastSubregionPointerPoint]);
+  }, [dragPointerOffset, draggingTarget, isPanningMap, lastPanClientPoint]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -366,15 +306,12 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
           return;
         }
 
-        if (selectedSubregionId) {
-          deleteSubregion(selectedSubregionId);
-        }
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedMarkerId, selectedSubregionId]);
+  }, [selectedMarkerId]);
 
   useEffect(() => {
     const serializedState = JSON.stringify(state);
@@ -535,7 +472,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
 
   function clearMapSelection() {
     setSelectedMarkerId(null);
-    setSelectedSubregionId(null);
     setSelectedHiddenSiteId(null);
     setIsPartyPositionSelected(false);
   }
@@ -582,32 +518,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
     });
     setSelectedMarkerId(null);
     setPendingMessage("Location removed from the map.");
-  }
-
-  function deleteSubregion(subregionId: string) {
-    setState((current) => {
-      const subregion = current.map.subregions.find((candidate) => candidate.id === subregionId);
-      if (!subregion) {
-        return current;
-      }
-
-      return {
-        ...current,
-        map: {
-          ...current.map,
-          subregions: current.map.subregions.filter((candidate) => candidate.id !== subregionId),
-          recentlyDeletedSubregions: [
-            {
-              deletedAt: new Date().toISOString(),
-              subregion,
-            },
-            ...current.map.recentlyDeletedSubregions,
-          ].slice(0, 12),
-        },
-      };
-    });
-    setSelectedSubregionId(null);
-    setPendingMessage("Subregion removed from the map.");
   }
 
   async function runTask(kind: NonNullable<typeof busy>, task: () => Promise<void>) {
@@ -750,13 +660,13 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
           <p className="text-xs uppercase tracking-[0.35em] text-[var(--ink-muted)]">Five Leagues from the Borderlands</p>
           <h1 className="font-display text-4xl text-[var(--ink)] md:text-6xl">Warband chronicle, roster, and living region map.</h1>
           <p className="max-w-3xl text-sm leading-7 text-[var(--ink-soft)] md:text-base">
-            Track a full band of eight adventurers, keep the campaign sheet in one place, and pin every delve, hideout,
-            and sanctuary straight onto your uploaded region map.
+            Track a full band of eight adventurers, keep the campaign sheet in one place, pin every delve and hideout,
+            and read the region through an adjustable hex overlay.
           </p>
           <div className="flex flex-wrap gap-3 text-sm text-[var(--ink-soft)]">
             <StatusPill icon={<Swords className="h-4 w-4" />}>{state.characters.length}/{MAX_CHARACTERS} adventurers</StatusPill>
             <StatusPill icon={<MapPinned className="h-4 w-4" />}>{state.map.markers.length} map locations</StatusPill>
-            <StatusPill icon={<Mountain className="h-4 w-4" />}>{state.map.subregions.length} subregions</StatusPill>
+            <StatusPill icon={<MapPinned className="h-4 w-4" />}>{hexGridCells.length} hexes</StatusPill>
           </div>
         </div>
         <div className="rounded-[24px] border border-[var(--border-soft)] bg-[var(--panel-strong)] p-5">
@@ -1100,14 +1010,77 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowSubregions((current) => !current)}
+                    onClick={() =>
+                      updateState((current) => ({
+                        ...current,
+                        map: {
+                          ...current.map,
+                          hexGrid: { ...current.map.hexGrid, visible: !current.map.hexGrid.visible },
+                        },
+                      }))
+                    }
                     className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${
-                      showSubregions
+                      state.map.hexGrid.visible
                         ? "border-[var(--accent)] bg-white text-[var(--accent)]"
                         : "border-[var(--border-strong)] text-[var(--ink)] hover:bg-[var(--panel)]"
                     }`}
                   >
-                    {showSubregions ? "Hide regions" : "Show regions"}
+                    {state.map.hexGrid.visible ? "Hide hexes" : "Show hexes"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateState((current) => ({
+                        ...current,
+                        map: {
+                          ...current.map,
+                          hexGrid: { ...current.map.hexGrid, showNumbers: !current.map.hexGrid.showNumbers },
+                        },
+                      }))
+                    }
+                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${
+                      state.map.hexGrid.showNumbers
+                        ? "border-[var(--accent)] bg-white text-[var(--accent)]"
+                        : "border-[var(--border-strong)] text-[var(--ink)] hover:bg-[var(--panel)]"
+                    }`}
+                  >
+                    {state.map.hexGrid.showNumbers ? "Hide numbers" : "Show numbers"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateState((current) => ({
+                        ...current,
+                        map: {
+                          ...current.map,
+                          hexGrid: {
+                            ...current.map.hexGrid,
+                            size: Math.max(4, Number((current.map.hexGrid.size - 0.75).toFixed(2))),
+                          },
+                        },
+                      }))
+                    }
+                    className="rounded-full border border-[var(--border-strong)] px-3 py-2 text-sm text-[var(--ink)] transition hover:bg-[var(--panel)]"
+                  >
+                    Hex -
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateState((current) => ({
+                        ...current,
+                        map: {
+                          ...current.map,
+                          hexGrid: {
+                            ...current.map.hexGrid,
+                            size: Math.min(18, Number((current.map.hexGrid.size + 0.75).toFixed(2))),
+                          },
+                        },
+                      }))
+                    }
+                    className="rounded-full border border-[var(--border-strong)] px-3 py-2 text-sm text-[var(--ink)] transition hover:bg-[var(--panel)]"
+                  >
+                    Hex +
                   </button>
                 </div>
                 </div>
@@ -1198,7 +1171,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                       }));
                       setDraggingLibraryItem(null);
                       setSelectedMarkerId(null);
-                      setSelectedSubregionId(null);
                       setSelectedHiddenSiteId(null);
                       setIsPartyPositionSelected(true);
                       setPendingMessage("Party position placed. Drag it as the warband travels.");
@@ -1215,7 +1187,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                     }));
                     setDraggingLibraryItem(null);
                     setSelectedMarkerId(marker.id);
-                    setSelectedSubregionId(null);
                     setSelectedHiddenSiteId(null);
                     setIsPartyPositionSelected(false);
                     setPendingMessage(`${marker.title} placed. Add notes in the inspector.`);
@@ -1262,7 +1233,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
 
                   setSelectedHiddenSiteId(null);
                   setSelectedMarkerId(null);
-                  setSelectedSubregionId(null);
                   setIsPartyPositionSelected(false);
                   setPlacementMode(null);
                   setPendingMessage("Hidden site revealed and placed on the map.");
@@ -1271,18 +1241,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                 onClick={(event) => {
                   const point = getRelativePoint(mapViewportRef.current, event.clientX, event.clientY);
                   if (!point) {
-                    return;
-                  }
-
-                  if (draftSubregion) {
-                    setDraftSubregion((current) =>
-                      current
-                        ? {
-                            ...current,
-                            points: [...current.points, point],
-                          }
-                        : current,
-                    );
                     return;
                   }
 
@@ -1311,7 +1269,7 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                   }
                 }}
                 onPointerDown={(event) => {
-                  if (event.button !== 0 || draftSubregion || placementMode) {
+                  if (event.button !== 0 || placementMode) {
                     return;
                   }
 
@@ -1353,7 +1311,7 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                   ) : (
                     <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(167,109,54,0.18),_transparent_45%),linear-gradient(180deg,rgba(248,239,219,0.92),rgba(232,216,189,0.92))] p-8 text-center text-[var(--ink-soft)] pointer-events-none">
                       <div className="max-w-md space-y-3">
-                        <p>Upload a region map to start placing towns, delves, hidden sites, and subregions.</p>
+                        <p>Upload a region map to start placing towns, delves, hidden sites, and a hex grid.</p>
                         <p className="text-xs uppercase tracking-[0.24em] text-[var(--ink-muted)]">
                           {isMapDropActive ? "Drop image to set the region map" : "You can also drag an image file straight onto this panel."}
                         </p>
@@ -1362,120 +1320,38 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                   )}
 
                   <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 z-10 h-full w-full">
-                    {showSubregions ? state.map.subregions.map((subregion) => (
-                      <g key={subregion.id}>
-                        <polygon
-                          points={subregion.points.map((point) => `${point.x * 100},${point.y * 100}`).join(" ")}
-                          fill={subregion.color}
-                          fillOpacity={selectedSubregionId === subregion.id ? 0.36 : 0.24}
-                          stroke={subregion.color}
-                          strokeWidth={1.15}
-                          vectorEffect="non-scaling-stroke"
-                          style={{ pointerEvents: "auto", cursor: draggingSubregionId === subregion.id ? "grabbing" : "grab" }}
-                          onPointerDown={(event) => {
-                            event.stopPropagation();
-                            const point = getRelativePoint(mapViewportRef.current, event.clientX, event.clientY);
-                            setSelectedMarkerId(null);
-                            setSelectedSubregionId(subregion.id);
-                            setSelectedHiddenSiteId(null);
-                            setIsPartyPositionSelected(false);
-                            setDraggingSubregionId(subregion.id);
-                            setLastSubregionPointerPoint(point);
-                          }}
-                          onDoubleClick={(event) => {
-                            event.stopPropagation();
-                            const point = getRelativePoint(mapViewportRef.current, event.clientX, event.clientY);
-                            if (!point) {
-                              return;
-                            }
-                            updateSubregion(subregion.id, setState, (currentSubregion) => ({
-                              ...currentSubregion,
-                              points: insertPointIntoSubregion(currentSubregion.points, point),
-                            }));
-                            setSelectedSubregionId(subregion.id);
-                            setPendingMessage("Added a new point to the subregion.");
-                          }}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedMarkerId(null);
-                            setSelectedSubregionId(subregion.id);
-                            setSelectedHiddenSiteId(null);
-                            setIsPartyPositionSelected(false);
-                          }}
-                        />
-                        <text
-                          x={getSubregionCentroid(subregion.points).x * 100}
-                          y={getSubregionCentroid(subregion.points).y * 100}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          className="pointer-events-none fill-black text-[1.35px] italic"
-                          style={{ paintOrder: "stroke", stroke: "rgba(255,255,255,0.9)", strokeWidth: 0.35, strokeLinejoin: "round" }}
-                        >
-                          {subregion.title || "Subregion"}
-                        </text>
-                        {selectedSubregionId === subregion.id
-                          ? subregion.points.map((point, index) => (
-                              <circle
-                                key={`${subregion.id}-point-${index}`}
-                                cx={point.x * 100}
-                                cy={point.y * 100}
-                                r={1.3}
-                                fill="#fff7e7"
-                                stroke={subregion.color}
-                                strokeWidth={0.8}
-                                vectorEffect="non-scaling-stroke"
-                                style={{ pointerEvents: "auto", cursor: "move" }}
-                                onPointerDown={(event) => {
-                                  event.stopPropagation();
-                                  setDraggingSubregionPoint({ subregionId: subregion.id, pointIndex: index });
-                                  setSelectedSubregionId(subregion.id);
-                                }}
-                                onContextMenu={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-
-                                  if (subregion.points.length <= 3) {
-                                    setPendingMessage("A subregion needs at least three points.");
-                                    return;
-                                  }
-
-                                  updateSubregion(subregion.id, setState, (currentSubregion) => ({
-                                    ...currentSubregion,
-                                    points: currentSubregion.points.filter((_, pointIndex) => pointIndex !== index),
-                                  }));
-                                  setSelectedSubregionId(subregion.id);
-                                  setPendingMessage("Removed subregion point.");
-                                }}
-                              />
-                            ))
-                          : null}
-                      </g>
-                    )) : null}
-
-                    {draftSubregion && draftSubregion.points.length > 1 ? (
-                      <>
-                        <polyline
-                          points={draftSubregion.points.map((point) => `${point.x * 100},${point.y * 100}`).join(" ")}
-                          fill="none"
-                          stroke={draftSubregion.color}
-                          strokeWidth={1.2}
-                          strokeDasharray="2.4 1.2"
-                          vectorEffect="non-scaling-stroke"
-                        />
-                        {draftSubregion.points.map((point, index) => (
-                          <circle
-                            key={`${point.x}-${point.y}-${index}`}
-                            cx={point.x * 100}
-                            cy={point.y * 100}
-                            r={1.2}
-                            fill="#fff7e7"
-                            stroke={draftSubregion.color}
-                            strokeWidth={0.7}
-                            vectorEffect="non-scaling-stroke"
-                          />
-                        ))}
-                      </>
-                    ) : null}
+                    {state.map.hexGrid.visible
+                      ? hexGridCells.map((hex) => (
+                          <g key={hex.id}>
+                            <polygon
+                              points={hex.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                              fill="none"
+                              stroke="rgba(255,255,255,0.95)"
+                              strokeWidth={hexOuterStrokeWidth}
+                              vectorEffect="non-scaling-stroke"
+                            />
+                            <polygon
+                              points={hex.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                              fill="none"
+                              stroke="rgba(0,0,0,0.78)"
+                              strokeWidth={hexInnerStrokeWidth}
+                              vectorEffect="non-scaling-stroke"
+                            />
+                            {state.map.hexGrid.showNumbers ? (
+                              <text
+                                x={hex.center.x}
+                                y={hex.center.y}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                className="pointer-events-none fill-black text-[0.95px]"
+                                style={{ paintOrder: "stroke", stroke: "rgba(255,255,255,0.96)", strokeWidth: 0.28, strokeLinejoin: "round" }}
+                              >
+                                {hex.label}
+                              </text>
+                            ) : null}
+                          </g>
+                        ))
+                      : null}
                   </svg>
 
                   {state.map.markers.map((marker) => {
@@ -1501,7 +1377,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                               }
                               setDraggingTarget(marker.id);
                               setSelectedMarkerId(marker.id);
-                              setSelectedSubregionId(null);
                               setSelectedHiddenSiteId(null);
                               setIsPartyPositionSelected(false);
                             }}
@@ -1509,7 +1384,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                             onClick={(event) => {
                               event.stopPropagation();
                               setSelectedMarkerId(marker.id);
-                              setSelectedSubregionId(null);
                               setSelectedHiddenSiteId(null);
                               setIsPartyPositionSelected(false);
                             }}
@@ -1567,7 +1441,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                         }
                         setDraggingTarget("party");
                         setSelectedMarkerId(null);
-                        setSelectedSubregionId(null);
                         setSelectedHiddenSiteId(null);
                         setIsPartyPositionSelected(true);
                       }}
@@ -1575,7 +1448,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                       onClick={(event) => {
                         event.stopPropagation();
                         setSelectedMarkerId(null);
-                        setSelectedSubregionId(null);
                         setSelectedHiddenSiteId(null);
                         setIsPartyPositionSelected(true);
                       }}
@@ -1691,31 +1563,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                       className="rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm text-[var(--ink)] transition hover:bg-[var(--panel)]"
                     >
                       Remove location
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
-              {selectedSubregion ? (
-                <div className="rounded-[22px] border border-[var(--border-soft)] bg-[var(--panel-strong)] p-4">
-                  <p className="text-xs uppercase tracking-[0.28em] text-[var(--ink-muted)]">Selected subregion</p>
-                  <div className="mt-4 space-y-3">
-                    <Field label="Title"><Input value={selectedSubregion.title} onChange={(value) => updateSubregion(selectedSubregion.id, setState, (subregion) => ({ ...subregion, title: value }))} /></Field>
-                    <Field label="Notes"><Textarea value={selectedSubregion.notes} onChange={(value) => updateSubregion(selectedSubregion.id, setState, (subregion) => ({ ...subregion, notes: value }))} rows={6} /></Field>
-                    <Field label="Color">
-                      <input
-                        type="color"
-                        value={selectedSubregion.color}
-                        onChange={(event) => updateSubregion(selectedSubregion.id, setState, (subregion) => ({ ...subregion, color: event.target.value }))}
-                        className="h-12 w-full cursor-pointer rounded-2xl border border-[var(--border-soft)] bg-white/80 p-2"
-                      />
-                    </Field>
-                    <button
-                      type="button"
-                      onClick={() => deleteSubregion(selectedSubregion.id)}
-                      className="rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm text-[var(--ink)] transition hover:bg-[var(--panel)]"
-                    >
-                      Remove subregion
                     </button>
                   </div>
                 </div>
@@ -1845,90 +1692,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                 </div>
               ) : null}
 
-              <div className="rounded-[22px] border border-[var(--border-soft)] bg-[var(--panel-strong)] p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.28em] text-[var(--ink-muted)]">Subregions</p>
-                    <p className="mt-1 text-sm text-[var(--ink-soft)]">Draw named areas on the map, then drag shapes or edit their points.</p>
-                  </div>
-                  {!draftSubregion ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDraftSubregion(createDraftSubregion());
-                        clearMapSelection();
-                        setPlacementMode(null);
-                        setPendingMessage("Subregion mode on: click the map to add points, then finish it here.");
-                      }}
-                      className="rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm text-[var(--ink)] transition hover:bg-[var(--panel)]"
-                    >
-                      Draw subregion
-                    </button>
-                  ) : null}
-                </div>
-
-                {draftSubregion ? (
-                  <div className="mt-4 space-y-3">
-                    <div className="rounded-2xl border border-[var(--accent)] bg-white/70 px-4 py-3 text-sm text-[var(--ink-soft)]">
-                      Click the map to add boundary points. Double-click an existing subregion edge later to insert more points. Current points: {draftSubregion.points.length}.
-                    </div>
-                    <Field label="Title"><Input value={draftSubregion.title} onChange={(value) => setDraftSubregion((current) => (current ? { ...current, title: value } : current))} /></Field>
-                    <Field label="Notes"><Textarea value={draftSubregion.notes} onChange={(value) => setDraftSubregion((current) => (current ? { ...current, notes: value } : current))} rows={4} /></Field>
-                    <Field label="Color">
-                      <input
-                        type="color"
-                        value={draftSubregion.color}
-                        onChange={(event) => setDraftSubregion((current) => (current ? { ...current, color: event.target.value } : current))}
-                        className="h-12 w-full cursor-pointer rounded-2xl border border-[var(--border-soft)] bg-white/80 p-2"
-                      />
-                    </Field>
-                    <div className="flex flex-wrap gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (draftSubregion.points.length < 3) {
-                            setPendingMessage("A subregion needs at least three points.");
-                            return;
-                          }
-
-                          const nextSubregion: Subregion = {
-                            id: crypto.randomUUID(),
-                            title: draftSubregion.title || "Unnamed subregion",
-                            notes: draftSubregion.notes,
-                            color: draftSubregion.color,
-                            points: draftSubregion.points,
-                          };
-
-                          updateState((current) => ({
-                            ...current,
-                            map: {
-                              ...current.map,
-                              subregions: [...current.map.subregions, nextSubregion],
-                            },
-                          }));
-                          setSelectedSubregionId(nextSubregion.id);
-                          setDraftSubregion(null);
-                          setPendingMessage("Subregion added.");
-                        }}
-                        className="rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm text-[var(--ink)] transition hover:bg-[var(--panel)]"
-                      >
-                        Finish subregion
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDraftSubregion(null);
-                          setPendingMessage("Cancelled subregion drawing.");
-                        }}
-                        className="rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm text-[var(--ink)] transition hover:bg-[var(--panel)]"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
               {!hasMapSelection ? (
               <div className="rounded-[22px] border border-[var(--border-soft)] bg-[var(--panel-strong)] p-4">
                 <p className="text-xs uppercase tracking-[0.28em] text-[var(--ink-muted)]">Marker library</p>
@@ -1969,9 +1732,7 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                   onDragEnd={() => setDraggingLibraryItem(null)}
                   onClick={() => {
                     setPlacementMode("party-position");
-                    setDraftSubregion(null);
                     setSelectedMarkerId(null);
-                    setSelectedSubregionId(null);
                     setSelectedHiddenSiteId(null);
                     setIsPartyPositionSelected(true);
                     setPendingMessage("Click the map to place the party horse marker.");
@@ -2007,7 +1768,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                       }));
                       setSelectedHiddenSiteId(hiddenSite.id);
                       setSelectedMarkerId(null);
-                      setSelectedSubregionId(null);
                       setIsPartyPositionSelected(false);
                     }}
                     className="rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm text-[var(--ink)] transition hover:bg-[var(--panel)]"
@@ -2031,7 +1791,6 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                           onClick={() => {
                             setSelectedHiddenSiteId(site.id);
                             setSelectedMarkerId(null);
-                            setSelectedSubregionId(null);
                             setIsPartyPositionSelected(false);
                           }}
                           className={`rounded-2xl border px-4 py-3 text-left transition ${
@@ -2062,58 +1821,36 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.28em] text-[var(--ink-muted)]">Recently deleted</p>
-                    <p className="mt-1 text-sm text-[var(--ink-soft)]">Restore a recently removed map location or subregion if you deleted it by mistake.</p>
+                    <p className="mt-1 text-sm text-[var(--ink-soft)]">Restore a recently removed map location if you deleted it by mistake.</p>
                   </div>
                 </div>
                 <div className="mt-4 grid gap-3">
-                  {state.map.recentlyDeletedMarkers.length === 0 && state.map.recentlyDeletedSubregions.length === 0 ? (
-                    <p className="text-sm leading-6 text-[var(--ink-soft)]">No recently deleted locations or subregions.</p>
+                  {state.map.recentlyDeletedMarkers.length === 0 ? (
+                    <p className="text-sm leading-6 text-[var(--ink-soft)]">No recently deleted locations.</p>
                   ) : (
-                    [
-                      ...state.map.recentlyDeletedMarkers.map((entry) => ({ type: "marker" as const, ...entry })),
-                      ...state.map.recentlyDeletedSubregions.map((entry) => ({ type: "subregion" as const, ...entry })),
-                    ]
-                      .sort((left, right) => right.deletedAt.localeCompare(left.deletedAt))
-                      .map((entry) => (
-                      <div key={`${entry.type}-${entry.deletedAt}-${entry.type === "marker" ? entry.marker.id : entry.subregion.id}`} className="rounded-2xl border border-[var(--border-soft)] bg-white/60 px-4 py-3">
+                    state.map.recentlyDeletedMarkers.map((entry) => (
+                      <div key={`${entry.marker.id}-${entry.deletedAt}`} className="rounded-2xl border border-[var(--border-soft)] bg-white/60 px-4 py-3">
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <p className="font-medium text-[var(--ink)]">{entry.type === "marker" ? entry.marker.title : entry.subregion.title || "Unnamed subregion"}</p>
+                            <p className="font-medium text-[var(--ink)]">{entry.marker.title}</p>
                             <p className="mt-1 text-sm text-[var(--ink-soft)]">Deleted {formatTimestamp(entry.deletedAt)}</p>
                           </div>
                           <button
                             type="button"
                             onClick={() => {
-                              if (entry.type === "marker") {
-                                updateState((current) => ({
-                                  ...current,
-                                  map: {
-                                    ...current.map,
-                                    markers: [...current.map.markers, entry.marker],
-                                    recentlyDeletedMarkers: current.map.recentlyDeletedMarkers.filter(
-                                      (candidate) =>
-                                        !(candidate.deletedAt === entry.deletedAt && candidate.marker.id === entry.marker.id),
-                                    ),
-                                  },
-                                }));
-                                setSelectedMarkerId(entry.marker.id);
-                                setPendingMessage(`Restored ${entry.marker.title}.`);
-                                return;
-                              }
-
                               updateState((current) => ({
                                 ...current,
                                 map: {
                                   ...current.map,
-                                  subregions: [...current.map.subregions, entry.subregion],
-                                  recentlyDeletedSubregions: current.map.recentlyDeletedSubregions.filter(
+                                  markers: [...current.map.markers, entry.marker],
+                                  recentlyDeletedMarkers: current.map.recentlyDeletedMarkers.filter(
                                     (candidate) =>
-                                      !(candidate.deletedAt === entry.deletedAt && candidate.subregion.id === entry.subregion.id),
+                                      !(candidate.deletedAt === entry.deletedAt && candidate.marker.id === entry.marker.id),
                                   ),
                                 },
                               }));
-                              setSelectedSubregionId(entry.subregion.id);
-                              setPendingMessage(`Restored ${entry.subregion.title || "subregion"}.`);
+                              setSelectedMarkerId(entry.marker.id);
+                              setPendingMessage(`Restored ${entry.marker.title}.`);
                             }}
                             className="rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm text-[var(--ink)] transition hover:bg-[var(--panel)]"
                           >
@@ -2148,89 +1885,56 @@ function updateMarker(
   }));
 }
 
-function updateSubregion(
-  subregionId: string,
-  setState: Dispatch<SetStateAction<CampaignState>>,
-  updater: (subregion: Subregion) => Subregion,
-) {
-  setState((current) => ({
-    ...current,
-    map: {
-      ...current.map,
-      subregions: current.map.subregions.map((subregion) =>
-        subregion.id === subregionId ? updater(subregion) : subregion,
-      ),
-    },
-  }));
-}
+function createHexGrid(size: number, aspectRatio: number) {
+  const width = Math.min(18, Math.max(4, size));
+  const safeAspectRatio = aspectRatio > 0 ? aspectRatio : 1;
+  const height = (Math.sqrt(3) / 2) * width * safeAspectRatio;
+  const horizontalStep = width * 0.75;
+  const verticalStep = height;
+  const cells: Array<{
+    id: string;
+    label: string;
+    center: { x: number; y: number };
+    points: Array<{ x: number; y: number }>;
+  }> = [];
 
-function getSubregionCentroid(points: Array<{ x: number; y: number }>) {
-  if (points.length === 0) {
-    return { x: 0.5, y: 0.5 };
-  }
+  let column = 0;
+  let hexNumber = 1;
 
-  const total = points.reduce(
-    (accumulator, point) => ({
-      x: accumulator.x + point.x,
-      y: accumulator.y + point.y,
-    }),
-    { x: 0, y: 0 },
-  );
+  for (let x = width / 2; x <= 100 + width; x += horizontalStep) {
+    const yOffset = column % 2 === 0 ? height / 2 : height;
+    let row = 0;
 
-  return {
-    x: total.x / points.length,
-    y: total.y / points.length,
-  };
-}
-
-function insertPointIntoSubregion(
-  points: Array<{ x: number; y: number }>,
-  point: { x: number; y: number },
-) {
-  if (points.length < 2) {
-    return [...points, point];
-  }
-
-  let bestSegmentIndex = 0;
-  let bestDistance = Number.POSITIVE_INFINITY;
-
-  for (let index = 0; index < points.length; index += 1) {
-    const start = points[index];
-    const end = points[(index + 1) % points.length];
-    const distance = distanceToSegment(point, start, end);
-
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestSegmentIndex = index;
+    for (let y = yOffset; y <= 100 + height; y += verticalStep) {
+      cells.push({
+        id: `hex-${column}-${row}`,
+        label: String(hexNumber).padStart(3, "0"),
+        center: { x, y },
+        points: createHexPoints(x, y, width, height),
+      });
+      row += 1;
+      hexNumber += 1;
     }
+
+    column += 1;
   }
+
+  return cells;
+}
+
+function createHexPoints(centerX: number, centerY: number, width: number, height: number) {
+  const halfWidth = width / 2;
+  const quarterWidth = width / 4;
+  const halfHeight = height / 2;
 
   return [
-    ...points.slice(0, bestSegmentIndex + 1),
-    point,
-    ...points.slice(bestSegmentIndex + 1),
+    { x: centerX - quarterWidth, y: centerY - halfHeight },
+    { x: centerX + quarterWidth, y: centerY - halfHeight },
+    { x: centerX + halfWidth, y: centerY },
+    { x: centerX + quarterWidth, y: centerY + halfHeight },
+    { x: centerX - quarterWidth, y: centerY + halfHeight },
+    { x: centerX - halfWidth, y: centerY },
   ];
-}
-
-function distanceToSegment(
-  point: { x: number; y: number },
-  start: { x: number; y: number },
-  end: { x: number; y: number },
-) {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-
-  if (dx === 0 && dy === 0) {
-    return Math.hypot(point.x - start.x, point.y - start.y);
-  }
-
-  const t = Math.max(
-    0,
-    Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / (dx * dx + dy * dy)),
-  );
-  const projectionX = start.x + t * dx;
-  const projectionY = start.y + t * dy;
-  return Math.hypot(point.x - projectionX, point.y - projectionY);
 }
 
 function SectionCard(props: {

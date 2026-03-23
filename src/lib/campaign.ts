@@ -82,14 +82,6 @@ export type HiddenSite = {
   notes: string;
 };
 
-export type Subregion = {
-  id: string;
-  title: string;
-  notes: string;
-  color: string;
-  points: Array<{ x: number; y: number }>;
-};
-
 export type PartyPosition = {
   x: number;
   y: number;
@@ -101,9 +93,10 @@ export type DeletedMarker = {
   marker: MapMarker;
 };
 
-export type DeletedSubregion = {
-  deletedAt: string;
-  subregion: Subregion;
+export type HexGridSettings = {
+  visible: boolean;
+  showNumbers: boolean;
+  size: number;
 };
 
 export type CampaignState = {
@@ -127,9 +120,8 @@ export type CampaignState = {
     partyPosition: PartyPosition | null;
     markers: MapMarker[];
     recentlyDeletedMarkers: DeletedMarker[];
-    recentlyDeletedSubregions: DeletedSubregion[];
     hiddenSites: HiddenSite[];
-    subregions: Subregion[];
+    hexGrid: HexGridSettings;
     markerLibrary: Partial<Record<MapLocationKind | TownVariant, AssetReference>>;
   };
 };
@@ -226,9 +218,12 @@ export function createDefaultCampaignState(): CampaignState {
       partyPosition: null,
       markers: [],
       recentlyDeletedMarkers: [],
-      recentlyDeletedSubregions: [],
       hiddenSites: [],
-      subregions: [],
+      hexGrid: {
+        visible: true,
+        showNumbers: false,
+        size: 9,
+      },
       markerLibrary: {},
     },
   };
@@ -270,20 +265,17 @@ export function normalizeCampaignState(state: CampaignState): CampaignState {
           y: clampUnit(entry.marker.y),
         },
       })),
-      recentlyDeletedSubregions: (state.map.recentlyDeletedSubregions ?? []).slice(0, 12),
       hiddenSites: (state.map.hiddenSites ?? []).map((site) => ({
         ...site,
         kind: site.kind ?? "delve",
         townVariant: site.kind === "town" ? site.townVariant || townVariants[0] : "",
         image: site.image ?? null,
       })),
-      subregions: state.map.subregions.map((subregion) => ({
-        ...subregion,
-        points: subregion.points.map((point) => ({
-          x: clampUnit(point.x),
-          y: clampUnit(point.y),
-        })),
-      })),
+      hexGrid: {
+        visible: state.map.hexGrid?.visible ?? true,
+        showNumbers: state.map.hexGrid?.showNumbers ?? false,
+        size: Math.min(18, Math.max(4, Number(state.map.hexGrid?.size ?? 9))),
+      },
     },
   };
 }
