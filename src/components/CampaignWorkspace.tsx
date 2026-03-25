@@ -1363,6 +1363,7 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                         style={{ left: `${marker.x * 100}%`, top: `${marker.y * 100}%` }}
                       >
                         <div className="relative flex items-center justify-center">
+                          <div className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(255,247,231,0.72)_0%,rgba(255,247,231,0.42)_46%,rgba(255,247,231,0)_70%)] scale-[1.24]" />
                           <button
                             type="button"
                             aria-label={marker.title}
@@ -1389,7 +1390,7 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                             }}
                           >
                             {preview ? (
-                              <img src={preview} alt="" draggable={false} className="pointer-events-none h-[clamp(22px,2.4vw,42px)] w-[clamp(22px,2.4vw,42px)] drop-shadow-[0_8px_12px_rgba(0,0,0,0.32)] select-none" />
+                              <img src={preview} alt="" draggable={false} className="pointer-events-none relative z-[1] h-[clamp(22px,2.4vw,42px)] w-[clamp(22px,2.4vw,42px)] drop-shadow-[0_8px_12px_rgba(0,0,0,0.32)] select-none [filter:contrast(1.18)_saturate(1.1)_brightness(0.96)_drop-shadow(0_0_1px_rgba(255,255,255,0.32))_drop-shadow(0_1px_1px_rgba(0,0,0,0.34))]" />
                             ) : (
                               <div className="grid h-10 w-10 place-items-center rounded-full border border-[var(--border-strong)] bg-[var(--panel)] text-xs font-semibold text-[var(--ink)] shadow-[0_8px_16px_rgba(42,27,14,0.16)]">
                                 {marker.kind === "town" ? "T" : marker.title[0]}
@@ -1452,7 +1453,8 @@ export default function CampaignWorkspace({ campaignCode, initialSnapshot, initi
                         setIsPartyPositionSelected(true);
                       }}
                     >
-                      <img src={getPartyPositionAssetPath()} alt="" draggable={false} className="pointer-events-none h-[clamp(22px,2.4vw,42px)] w-[clamp(22px,2.4vw,42px)] drop-shadow-[0_8px_12px_rgba(0,0,0,0.32)] select-none" />
+                      <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(255,247,231,0.72)_0%,rgba(255,247,231,0.42)_46%,rgba(255,247,231,0)_70%)] scale-[1.24]" />
+                      <img src={getPartyPositionAssetPath()} alt="" draggable={false} className="pointer-events-none relative z-[1] h-[clamp(22px,2.4vw,42px)] w-[clamp(22px,2.4vw,42px)] drop-shadow-[0_8px_12px_rgba(0,0,0,0.32)] select-none [filter:contrast(1.18)_saturate(1.1)_brightness(0.96)_drop-shadow(0_0_1px_rgba(255,255,255,0.32))_drop-shadow(0_1px_1px_rgba(0,0,0,0.34))]" />
                     </button>
                   ) : null}
                   </div>
